@@ -58,19 +58,13 @@ export const ClockAndSchedule = () => {
   return (
     <div className="grid md:grid-cols-2 gap-6 mb-6">
       {/* Clock Widget */}
-      <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg p-6 border border-slate-600 shadow-xl">
-        <div className="flex items-center gap-2 mb-4">
-          <Clock className="w-6 h-6 text-blue-400" />
-          <h3 className="text-xl font-bold text-white">Current Time</h3>
+      <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg p-6 border border-slate-600 shadow-xl flex flex-col items-center justify-center min-h-64">
+        <div className="text-7xl font-bold text-blue-400 font-mono mb-4">
+          {formatTime(time)}
         </div>
-
-        <div className="text-center">
-          <div className="text-5xl font-bold text-blue-400 font-mono mb-2">
-            {formatTime(time)}
-          </div>
-          <div className="text-gray-400 text-sm">
-            {formatDate(time)}
-          </div>
+        <div className="text-gray-400 text-sm flex items-center gap-2">
+          <Clock className="w-4 h-4" />
+          {formatDate(time)}
         </div>
       </div>
 
