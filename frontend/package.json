@@ -1,0 +1,22 @@
+{
+  "name": "venue-event-frontend",
+  "version": "1.0.0",
+  "description": "Real-time venue event coordination mobile app",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "socket.io-client": "^4.5.4",
+    "axios": "^1.3.4",
+    "react-router-dom": "^6.10.0",
+    "zustand": "^4.3.7"
+  },
+  "devDependencies": {
+    "vite": "^4.2.0",
+    "@vitejs/plugin-react": "^3.1.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  }
+}

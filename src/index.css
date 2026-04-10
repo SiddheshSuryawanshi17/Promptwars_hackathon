@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==================== CUSTOM STYLES ==================== */
+
+/* Dark Mode Enhancements */
+body {
+  @apply bg-slate-900 text-white;
+}
+
+/* High-Contrast Color Scheme */
+:root {
+  --color-primary: #facc15; /* Yellow-400 */
+  --color-success: #22c55e; /* Green */
+  --color-warning: #f97316; /* Orange */
+  --color-danger: #ef4444; /* Red */
+  --color-info: #3b82f6; /* Blue */
+  --color-dark-bg: #0f172a; /* Slate-900 */
+  --color-dark-secondary: #1e293b; /* Slate-800 */
+  --color-dark-tertiary: #334155; /* Slate-700 */
+}
+
+/* Accessibility: High Contrast Mode */
+@media (prefers-contrast: more) {
+  body {
+    background-color: #000;
+    color: #fff;
+  }
+
+  button {
+    border: 2px solid currentColor;
+  }
+
+  .border-slate-600 {
+    @apply border-2;
+  }
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus Visible for Keyboard Navigation */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  @apply outline-2 outline-yellow-400 outline-offset-2;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
+  button, input, select, textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .no-print {
+    display: none;
+  }
+}
+
+/* Animation for real-time updates */
+@keyframes pulse-update {
+  0% {
+    background-color: rgb(250, 204, 21);
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    background-color: transparent;
+    opacity: 0;
+  }
+}
+
+.pulse-update {
+  animation: pulse-update 1.5s ease-out;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Hover effects for dark mode */
+.transition-hover {
+  @apply transition-all duration-200;
+}
+
+button:hover {
+  @apply transform scale-105 transition-transform;
+}
+
+/* Card styles */
+.card {
+  @apply bg-slate-700 rounded-lg p-6 border border-slate-600;
+}
+
+.card:hover {
+  @apply border-yellow-400 transition-colors;
+}
+
+/* Badge styles */
+.badge {
+  @apply px-3 py-1 rounded text-white text-sm font-bold;
+}
+
+.badge-success {
+  @apply bg-green-500;
+}
+
+.badge-warning {
+  @apply bg-yellow-500;
+}
+
+.badge-danger {
+  @apply bg-red-500;
+}
+
+.badge-info {
+  @apply bg-blue-500;
+}
+
+/* Responsive Container */
+.container-responsive {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding: 0 2rem;
+  }
+}
