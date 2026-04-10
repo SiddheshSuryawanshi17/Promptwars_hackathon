@@ -12,7 +12,7 @@ import { NotificationPreferences } from './NotificationPreferences';
 import { PaymentProcessing } from './PaymentProcessing';
 import {
   MapPin, Clock, Users, AlertCircle, MessageCircle, Award,
-  Accessibility, Home, Zap, Navigation, Activity, Bell
+  Accessibility, Home, Zap, Navigation, Activity, Bell, Lightbulb, X, TrendingDown
 } from 'lucide-react';
 
 const SOCKET_URL = 'http://localhost:5000';
@@ -282,6 +282,8 @@ const VenueMap = ({ crowdDensity, queues, userSector }) => {
 // ==================== SMART QUEUE DASHBOARD ====================
 const QueueDashboard = ({ queues, onReportQueue, userPoints }) => {
   const [expandedQueue, setExpandedQueue] = useState(null);
+  const [suggestions, setSuggestions] = useState(null);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const getWaitColor = (wait) => {
     if (wait > 20) return 'bg-red-500';
@@ -292,12 +294,100 @@ const QueueDashboard = ({ queues, onReportQueue, userPoints }) => {
 
   const getAccessibilityLabel = (value) => value ? '♿ Accessible' : 'Not Accessible';
 
+  const handleSuggestAlternative = async (facilityId) => {
+    setLoadingSuggestions(true);
+    try {
+      const response = await fetch(`http://localhost:5000/api/suggest-alternative/${facilityId}`);
+      const data = await response.json();
+      setSuggestions(data);
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setSuggestions({
+        error: 'Failed to load suggestions',
+        message: 'Could not fetch alternative facilities'
+      });
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
   return (
     <div className="bg-slate-700 rounded-lg p-6 mb-6 border border-slate-600">
       <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
         <Clock className="w-6 h-6 text-yellow-400" />
         Smart Queue Management
       </h2>
+
+      {/* Suggestions Modal */}
+      {suggestions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full border border-slate-600 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-6 h-6 text-yellow-400" />
+                <h3 className="text-xl font-bold text-white">Alternative Suggestions</h3>
+              </div>
+              <button
+                onClick={() => setSuggestions(null)}
+                className="text-gray-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {suggestions.error ? (
+              <div className="bg-red-900 bg-opacity-30 border border-red-500 rounded p-4">
+                <p className="text-red-300 text-sm">{suggestions.message}</p>
+              </div>
+            ) : (
+              <>
+                {/* Current Facility */}
+                <div className="bg-slate-700 rounded p-4 mb-4">
+                  <p className="text-gray-400 text-xs mb-1">Current Facility</p>
+                  <p className="text-white font-bold">{suggestions.current.name}</p>
+                  <p className="text-orange-400 font-semibold text-lg mt-1">{suggestions.current.waitTime} min wait</p>
+                </div>
+
+                {/* Message */}
+                <p className="text-gray-300 text-sm mb-4">{suggestions.message}</p>
+
+                {/* Alternatives */}
+                {suggestions.alternatives.length > 0 ? (
+                  <div className="space-y-3 mb-4">
+                    {suggestions.alternatives.map((alt) => (
+                      <div
+                        key={alt.id}
+                        className="bg-green-900 bg-opacity-30 border border-green-500 rounded p-3 hover:bg-opacity-50 transition"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-white font-semibold">{alt.name}</p>
+                            <p className="text-green-400 text-sm">
+                              <TrendingDown className="w-4 h-4 inline mr-1" />
+                              {alt.waitTime} min (saves {alt.savings} min)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-yellow-900 bg-opacity-30 border border-yellow-500 rounded p-3 mb-4">
+                    <p className="text-yellow-300 text-sm">No shorter alternatives available at this time</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setSuggestions(null)}
+                  className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-2 rounded transition"
+                >
+                  Close
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-4">
         {queues && Object.values(queues).map((q) => (
@@ -328,8 +418,15 @@ const QueueDashboard = ({ queues, onReportQueue, userPoints }) => {
                   {getAccessibilityLabel(q.accessible)}
                 </p>
                 {q.currentWait > 15 && (
-                  <button className="mt-3 w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-2 rounded transition">
-                    Suggest Alternative
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSuggestAlternative(q.id);
+                    }}
+                    disabled={loadingSuggestions}
+                    className="mt-3 w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-2 rounded transition disabled:opacity-50"
+                  >
+                    {loadingSuggestions ? 'Loading...' : '💡 Suggest Alternative'}
                   </button>
                 )}
               </div>
@@ -394,73 +491,246 @@ const NotificationFeed = ({ notifications }) => {
 // ==================== AI CHATBOT CONCIERGE ====================
 const ChatbotConcierge = () => {
   const [messages, setMessages] = useState([
-    { role: 'bot', text: 'Hi! I\'m your Digital Concierge. Ask me anything about the venue!' }
+    {
+      role: 'bot',
+      text: 'Hi! 👋 I\'m your Digital Concierge. I can help with directions, wait times, food, restrooms, medical, and more!',
+      category: 'greeting'
+    }
   ]);
   const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [suggestedReplies, setSuggestedReplies] = useState([]);
+  const messagesEndRef = React.useRef(null);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const suggestedTopics = [
+    { text: '🍕 Shortest food queues', keyword: 'food' },
+    { text: '🚻 Find nearest restroom', keyword: 'restroom' },
+    { text: '⚕️ Medical tent location', keyword: 'medical' },
+    { text: '📍 Get directions', keyword: 'directions' },
+    { text: '🆘 Lost & Found', keyword: 'lost' },
+    { text: '🎟️ Venue info', keyword: 'info' }
+  ];
 
-    setMessages([...messages, { role: 'user', text: input }]);
+  const responseLibrary = {
+    food: {
+      keywords: ['food', 'eat', 'pizza', 'burger', 'soda', 'concession', 'hungry'],
+      responses: [
+        '🍕 Pizza Stand in North Sector has 8 min wait | 🍔 Burger Hut South has 12 min | 🥤 Soda Bar East has 5 min (shortest!)',
+        '🍽️ Pre-order food through our Concession Reservations to skip the line!',
+        '💰 Food prices: Pizza $8-9 | Burger $10-12 | Soda $4-5. All accept card payments.'
+      ],
+      category: 'food'
+    },
+    restroom: {
+      keywords: ['restroom', 'bathroom', 'toilet', 'washroom', 'wc', 'lavatory'],
+      responses: [
+        '🚻 Restroom Block A (North Wing) - 5 min wait | Block B (South Wing) - 8 min wait | Block C (East) - 3 min wait ✓',
+        '🧻 All restrooms are ADA accessible with baby changing facilities.',
+        '💡 Tip: East Wing has the shortest wait right now!'
+      ],
+      category: 'restroom'
+    },
+    medical: {
+      keywords: ['medical', 'doctor', 'nurse', 'emergency', 'sick', 'first aid', 'injured', 'help'],
+      responses: [
+        '⚕️ Medical Tent is in the Center Sector, near Gate 3. Staffed 24/7.',
+        '🚑 For emergencies, go to the Main Medical Station or call security at Sector Beacons.',
+        '💊 First Aid stations available in every sector. Look for the red cross signs.'
+      ],
+      category: 'medical'
+    },
+    directions: {
+      keywords: ['direction', 'where', 'how to get', 'navigate', 'gate', 'entrance', 'exit', 'section'],
+      responses: [
+        '🗺️ Use our Interactive Map to navigate! Get real-time directions to any facility.',
+        '📍 North Sector via Gate 1 | South Sector via Gate 2 | East via Gate 3 | West via Gate 4',
+        '🧭 Your current location is shown on the map. Click any facility for turn-by-turn directions!'
+      ],
+      category: 'directions'
+    },
+    lost: {
+      keywords: ['lost', 'found', 'missing', 'lost&found', 'lose', 'where\'s my'],
+      responses: [
+        '🆘 Lost & Found is at the Center Sector Information Desk.',
+        '📝 Describe your item and I can help search our database. Common items: phones, wallets, keys.',
+        '⏰ Lost & Found is open until 1 hour after the event ends.'
+      ],
+      category: 'lost'
+    },
+    info: {
+      keywords: ['event', 'schedule', 'time', 'when', 'what time', 'info', 'venue', 'capacity'],
+      responses: [
+        '📅 Today\'s Schedule: 10:00 AM Gates Open | 1:00 PM Match Starts | 3:30 PM Halftime Show | 6:00 PM Post-Game',
+        '🏟️ Venue Capacity: 75,000 | Current crowd: ~43,000 | Utilization: 57%',
+        '⏱️ Check the Clock & Schedule widget at the top for real-time updates!'
+      ],
+      category: 'info'
+    }
+  };
 
-    // Simulated AI responses
-    const responses = {
-      'nearest medical': 'The nearest medical tent is in the Center Sector, near the main concourse.',
-      'section 302': 'Section 302 is in the North Stand. Use Gate 1 for the fastest access.',
-      'restroom': 'Based on your location, Restroom Block A is closest with only 5 mins wait.',
-      'food': 'Pizza Stand in the North Sector has the shortest wait time (8 mins). Would you like directions?',
-      'lost found': 'Lost & Found is located at the Center Sector. What did you lose?'
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  const detectCategory = (text) => {
+    const lower = text.toLowerCase();
+    for (const [category, data] of Object.entries(responseLibrary)) {
+      if (data.keywords.some(kw => lower.includes(kw))) {
+        return category;
+      }
+    }
+    return 'general';
+  };
+
+  const getBotResponse = (userInput) => {
+    const category = detectCategory(userInput);
+    if (responseLibrary[category]) {
+      const responses = responseLibrary[category].responses;
+      return {
+        text: responses[Math.floor(Math.random() * responses.length)],
+        category: responseLibrary[category].category
+      };
+    }
+    return {
+      text: '❓ I\'m not sure about that. Try asking about: food queues, restrooms, medical help, directions, lost items, or event info.',
+      category: 'general'
     };
+  };
+
+  const getFollowUpSuggestions = (category) => {
+    const suggestions = {
+      food: ['🗺️ Get directions', '⏱️ Check wait times', '💳 Payment options'],
+      restroom: ['📍 Find nearest one', '🚗 Get directions', '♿ Accessibility info'],
+      medical: ['📍 Get directions', '☎️ Emergency info', '💊 First aid locations'],
+      directions: ['🗺️ See map', '⏱️ Travel time', '♿ Accessible route'],
+      lost: ['📝 Search database', '📞 Call info desk', '⏱️ Operating hours'],
+      greeting: ['🍕 Hungry?', '🚻 Need restroom?', '📍 How to navigate?'],
+      general: ['🔍 Search help', '📋 All topics', '💬 More info']
+    };
+    return suggestions[category] || suggestions['general'];
+  };
+
+  const handleSend = (text = input) => {
+    if (!text.trim()) return;
+
+    setMessages(prev => [...prev, { role: 'user', text: text.trim(), category: 'user' }]);
+    setInput('');
+    setSuggestedReplies([]);
+
+    setIsTyping(true);
 
     setTimeout(() => {
-      let botResponse = "I can help with that! Try asking about: medical tents, restrooms, food, or sections.";
-      for (const [key, value] of Object.entries(responses)) {
-        if (input.toLowerCase().includes(key)) {
-          botResponse = value;
-          break;
-        }
-      }
-      setMessages(prev => [...prev, { role: 'bot', text: botResponse }]);
-    }, 500);
+      const response = getBotResponse(text);
+      setMessages(prev => [...prev, response]);
+      setSuggestedReplies(getFollowUpSuggestions(response.category));
+      setIsTyping(false);
+    }, 1000 + Math.random() * 500);
+  };
 
-    setInput('');
+  const handleQuickReply = (topic) => {
+    handleSend(topic.text);
   };
 
   return (
     <div className="bg-slate-700 rounded-lg p-6 border border-slate-600 mb-6">
-      <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
         <MessageCircle className="w-6 h-6 text-yellow-400" />
         Digital Concierge (AI Chat)
       </h2>
+      <p className="text-gray-400 text-sm mb-4">Ask anything about the venue • Always here to help</p>
 
-      <div className="bg-slate-800 rounded-lg p-4 h-64 overflow-y-auto mb-4 space-y-3">
+      {/* Messages Area */}
+      <div className="bg-slate-800 rounded-lg p-4 h-80 overflow-y-auto mb-4 space-y-3">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-xs px-4 py-2 rounded-lg ${
+              className={`max-w-xs px-4 py-3 rounded-lg ${
                 msg.role === 'user'
-                  ? 'bg-yellow-400 text-black'
-                  : 'bg-slate-600 text-white'
+                  ? 'bg-yellow-400 text-black font-medium'
+                  : 'bg-slate-600 text-white border border-slate-500'
               }`}
             >
               {msg.text}
             </div>
           </div>
         ))}
+
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-slate-600 text-white px-4 py-3 rounded-lg border border-slate-500">
+              <div className="flex gap-2 items-center">
+                <span className="text-sm">Thinking</span>
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
       </div>
 
+      {/* Suggested Replies */}
+      {suggestedReplies.length > 0 && !isTyping && (
+        <div className="mb-4">
+          <p className="text-gray-400 text-xs mb-2">Quick replies:</p>
+          <div className="grid grid-cols-3 gap-2">
+            {suggestedReplies.map((reply, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setInput(reply);
+                  setTimeout(() => handleSend(reply), 50);
+                }}
+                className="bg-slate-600 hover:bg-slate-500 text-white text-xs py-2 px-3 rounded transition border border-slate-500 hover:border-yellow-400"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Suggested Topics (if empty chat) */}
+      {messages.length === 1 && !isTyping && (
+        <div className="mb-4">
+          <p className="text-gray-400 text-xs mb-2">Popular questions:</p>
+          <div className="grid grid-cols-2 gap-2">
+            {suggestedTopics.map((topic, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleQuickReply(topic)}
+                className="bg-slate-600 hover:bg-slate-500 text-white text-sm py-2 px-3 rounded transition border border-slate-500 hover:border-yellow-400 text-left"
+              >
+                {topic.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input Area */}
       <div className="flex gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Ask anything about the venue..."
+          placeholder="Ask about food, restrooms, medical, directions..."
           className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400"
+          disabled={isTyping}
         />
         <button
-          onClick={handleSend}
-          className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-4 py-2 rounded-lg transition"
+          onClick={() => handleSend()}
+          disabled={isTyping || !input.trim()}
+          className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-4 py-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Send
         </button>

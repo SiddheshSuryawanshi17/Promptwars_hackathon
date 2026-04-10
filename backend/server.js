@@ -127,6 +127,42 @@ app.post('/api/facilities/:id/update', (req, res) => {
   res.json({ success: true, facility });
 });
 
+// Suggest alternative facilities with shorter wait times
+app.get('/api/suggest-alternative/:facilityId', (req, res) => {
+  const currentFacility = Object.values(venueData.facilities).find(f => f.id === req.params.facilityId);
+
+  if (!currentFacility) {
+    return res.status(404).json({ error: 'Facility not found' });
+  }
+
+  // Get all open facilities except current one, filtered by type
+  const alternatives = Object.values(venueData.facilities)
+    .filter(f => f.id !== req.params.facilityId && f.status === 'open')
+    .filter(f => f.type === currentFacility.type) // Same type (food or washroom)
+    .filter(f => f.currentWaitTime < currentFacility.currentWaitTime) // Only shorter waits
+    .sort((a, b) => a.currentWaitTime - b.currentWaitTime) // Sort by wait time ascending
+    .slice(0, 3); // Top 3 alternatives
+
+  res.json({
+    current: {
+      id: currentFacility.id,
+      name: currentFacility.name,
+      waitTime: currentFacility.currentWaitTime,
+      type: currentFacility.type
+    },
+    alternatives: alternatives.map(f => ({
+      id: f.id,
+      name: f.name,
+      waitTime: f.currentWaitTime,
+      type: f.type,
+      savings: currentFacility.currentWaitTime - f.currentWaitTime
+    })),
+    message: alternatives.length > 0
+      ? `Found ${alternatives.length} shorter alternative(s)`
+      : 'No shorter alternatives available'
+  });
+});
+
 // WebSocket events
 io.on('connection', (socket) => {
   console.log(`New client connected: ${socket.id}`);
