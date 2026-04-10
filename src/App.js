@@ -20,18 +20,29 @@ const SOCKET_URL = 'http://localhost:5000';
 // ==================== LANDING PAGE ====================
 const LandingPage = ({ onEnter, userName, onLogout }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4">
-      {userName && (
-        <div className="absolute top-4 right-4 bg-slate-800 rounded-lg p-4 flex items-center gap-3 border border-slate-600">
-          <span className="text-gray-300">Welcome, <span className="text-yellow-400 font-bold">{userName}</span></span>
-          <button
-            onClick={onLogout}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition"
-          >
-            Logout
-          </button>
-        </div>
-      )}
+    <div
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4 relative"
+      style={{
+        backgroundImage: 'url(/images/Gemini_generated_image.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Overlay for text readability */}
+      <div className="absolute inset-0 bg-black/60"></div>
+      <div className="relative z-10 w-full flex flex-col items-center justify-center min-h-screen px-4">
+        {userName && (
+          <div className="absolute top-4 right-4 z-20 bg-slate-800 rounded-lg p-4 flex items-center gap-3 border border-slate-600">
+            <span className="text-gray-300">Welcome, <span className="text-yellow-400 font-bold">{userName}</span></span>
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition"
+            >
+              Logout
+            </button>
+          </div>
+        )}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-3 mb-6">
           <Zap className="w-16 h-16 text-yellow-400" />
@@ -76,6 +87,7 @@ const LandingPage = ({ onEnter, userName, onLogout }) => {
         <p>✓ 75,000+ capacity stadium</p>
         <p>✓ 5 concession stands • 4 restroom blocks</p>
         <p>✓ Real-time updates every 10 seconds</p>
+      </div>
       </div>
     </div>
   );
