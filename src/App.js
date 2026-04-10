@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
+import { AuthProvider, useAuth } from './AuthContext';
+import { Login } from './Login';
+import { Signup } from './Signup';
+import { ClockAndSchedule } from './ClockAndSchedule';
+import { Leaderboard } from './Leaderboard';
+import { ConcessionReservations } from './ConcessionReservations';
+import { GoogleMapsIntegration } from './GoogleMapsIntegration';
+import { AdminPanel } from './AdminPanel';
+import { NotificationPreferences } from './NotificationPreferences';
+import { PaymentProcessing } from './PaymentProcessing';
 import {
   MapPin, Clock, Users, AlertCircle, MessageCircle, Award,
   Accessibility, Home, Zap, Navigation, Activity, Bell
@@ -8,9 +18,20 @@ import {
 const SOCKET_URL = 'http://localhost:5000';
 
 // ==================== LANDING PAGE ====================
-const LandingPage = ({ onEnter }) => {
+const LandingPage = ({ onEnter, userName, onLogout }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4">
+      {userName && (
+        <div className="absolute top-4 right-4 bg-slate-800 rounded-lg p-4 flex items-center gap-3 border border-slate-600">
+          <span className="text-gray-300">Welcome, <span className="text-yellow-400 font-bold">{userName}</span></span>
+          <button
+            onClick={onLogout}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition"
+          >
+            Logout
+          </button>
+        </div>
+      )}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-3 mb-6">
           <Zap className="w-16 h-16 text-yellow-400" />
@@ -516,7 +537,7 @@ const GamificationPanel = ({ userPoints, onReportQueue }) => {
 };
 
 // ==================== MAIN DASHBOARD ====================
-const Dashboard = () => {
+const Dashboard = ({ onLogout, userName }) => {
   const [socket, setSocket] = useState(null);
   const [queues, setQueues] = useState(null);
   const [crowdDensity, setCrowdDensity] = useState({});
@@ -593,9 +614,17 @@ const Dashboard = () => {
             <Zap className="w-10 h-10 text-yellow-400" />
             <h1 className="text-4xl font-bold">VenueFlow Dashboard</h1>
           </div>
-          <div className="text-right">
-            <p className="text-gray-400 text-sm">User ID: {userId.substr(-8)}</p>
-            <p className="text-gray-400 text-sm">Fan Points: <span className="text-yellow-400 font-bold">{userPoints}</span></p>
+          <div className="text-right flex items-center gap-4">
+            <div>
+              <p className="text-gray-400 text-sm">Logged in as: <span className="text-yellow-400 font-bold">{userName}</span></p>
+              <p className="text-gray-400 text-sm">Fan Points: <span className="text-yellow-400 font-bold">{userPoints}</span></p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition"
+            >
+              Logout
+            </button>
           </div>
         </div>
         <p className="text-gray-400">Real-time updates • Live crowd tracking • Smart recommendations</p>
@@ -613,13 +642,25 @@ const Dashboard = () => {
         </div>
 
         <VenueMap crowdDensity={crowdDensity} queues={queues} userSector={userSector} />
+        <ClockAndSchedule />
         <QueueDashboard queues={queues} onReportQueue={handleReportQueue} userPoints={userPoints} />
         <NotificationFeed notifications={notifications} />
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           <ChatbotConcierge />
           <GamificationPanel userPoints={userPoints} onReportQueue={handleReportQueue} />
+          <Leaderboard userPoints={userPoints} userName={userName} />
         </div>
+
+        <ConcessionReservations />
+
+        <GoogleMapsIntegration />
+
+        <AdminPanel isAdmin={false} userName={userName} />
+
+        <NotificationPreferences />
+
+        <PaymentProcessing reservationItem={{ price: '12.99' }} />
 
         {/* Footer */}
         <div className="mt-8 text-center text-gray-400 text-sm">
@@ -632,16 +673,41 @@ const Dashboard = () => {
 };
 
 // ==================== MAIN APP ====================
-export default function App() {
+const AppContent = () => {
+  const { user, logout } = useAuth();
   const [showDashboard, setShowDashboard] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
 
+  // If user is authenticated and we're in dashboard, show dashboard
+  if (user && showDashboard) {
+    return (
+      <Dashboard onLogout={() => { logout(); setShowDashboard(false); }} userName={user.name} />
+    );
+  }
+
+  // If user is authenticated but not in dashboard, show landing page with logout
+  if (user && !showDashboard) {
+    return (
+      <LandingPage
+        onEnter={() => setShowDashboard(true)}
+        userName={user.name}
+        onLogout={() => { logout(); setShowDashboard(false); }}
+      />
+    );
+  }
+
+  // If not authenticated, show login/signup
+  if (authMode === 'login') {
+    return <Login onSwitchToSignup={() => setAuthMode('signup')} />;
+  } else {
+    return <Signup onSwitchToLogin={() => setAuthMode('login')} />;
+  }
+};
+
+export default function App() {
   return (
-    <div className="bg-slate-900 min-h-screen">
-      {!showDashboard ? (
-        <LandingPage onEnter={() => setShowDashboard(true)} />
-      ) : (
-        <Dashboard />
-      )}
-    </div>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

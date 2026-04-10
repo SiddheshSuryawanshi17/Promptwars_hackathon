@@ -3,6 +3,7 @@ const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
+const { registerUser, loginUser, getUser, authMiddleware, verifyToken } = require('./auth');
 
 const app = express();
 const server = http.createServer(app);
@@ -170,7 +171,45 @@ const generateNotifications = () => {
 
 // ==================== REST API ENDPOINTS ====================
 
-// Get venue config
+// Authentication endpoints
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, name } = req.body;
+
+  if (!email || !password || !name) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const result = await registerUser(email, password, name);
+  if (result.error) {
+    return res.status(400).json(result);
+  }
+  res.json(result);
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Missing email or password' });
+  }
+
+  const result = await loginUser(email, password);
+  if (result.error) {
+    return res.status(400).json(result);
+  }
+  res.json(result);
+});
+
+app.get('/api/auth/profile', authMiddleware, (req, res) => {
+  const user = getUser(req.userId);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  const { password, ...userWithoutPassword } = user;
+  res.json(userWithoutPassword);
+});
+
+
 app.get('/api/venue', (req, res) => {
   res.json(venueConfig);
 });
