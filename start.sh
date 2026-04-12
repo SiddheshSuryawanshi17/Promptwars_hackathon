@@ -46,7 +46,6 @@ echo ""
 echo -e "${BLUE}⚙️  Step 2: Setting up environment...${NC}"
 if [ ! -f ".env" ]; then
     cat > .env << EOF
-PORT=5000
 NODE_ENV=development
 FRONTEND_URL=http://localhost:3000
 EOF

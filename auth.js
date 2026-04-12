@@ -60,13 +60,14 @@ const registerUser = async (email, password, name) => {
     name,
     createdAt: new Date(),
     points: 0,
-    role: 'user'
+    role: 'user',
+    favorites: []
   };
 
   const token = generateToken(email);
   return {
     token,
-    user: { email, name, points: 0, role: 'user' }
+    user: { email, name, points: 0, role: 'user', favorites: [] }
   };
 };
 
@@ -86,7 +87,7 @@ const loginUser = async (email, password) => {
   const token = generateToken(email);
   return {
     token,
-    user: { email, name: user.name, points: user.points, role: user.role }
+    user: { email, name: user.name, points: user.points, role: user.role, favorites: user.favorites || [] }
   };
 };
 

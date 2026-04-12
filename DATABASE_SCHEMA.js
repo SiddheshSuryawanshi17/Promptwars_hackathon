@@ -251,13 +251,13 @@ db.facilities.find({
 
 // Backup Commands
 // Export collection to JSON
-mongoexport --db venue-events --collection facilities --out facilities.json
+// mongoexport --db venue-events --collection facilities --out facilities.json
 
 // Import collection from JSON
-mongoimport --db venue-events --collection facilities --file facilities.json
+// mongoimport --db venue-events --collection facilities --file facilities.json
 
 // Backup entire database
-mongodump --db venue-events --out ./backup
+// mongodump --db venue-events --out ./backup
 
 // Restore entire database
-mongorestore --db venue-events ./backup/venue-events
+// mongorestore --db venue-events ./backup/venue-events

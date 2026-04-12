@@ -84,6 +84,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const toggleFavorite = async (facilityId) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/user/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ facilityId })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUser(prev => ({ ...prev, favorites: data.favorites }));
+      }
+    } catch (err) {
+      console.error('Toggle favorite error:', err);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -91,7 +110,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, register, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, error, register, login, logout, toggleFavorite }}>
       {children}
     </AuthContext.Provider>
   );

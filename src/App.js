@@ -9,10 +9,9 @@ import { ConcessionReservations } from './ConcessionReservations';
 import { GoogleMapsIntegration } from './GoogleMapsIntegration';
 import { AdminPanel } from './AdminPanel';
 import { NotificationPreferences } from './NotificationPreferences';
-import { PaymentProcessing } from './PaymentProcessing';
 import {
   MapPin, Clock, Users, AlertCircle, MessageCircle, Award,
-  Accessibility, Home, Zap, Navigation, Activity, Bell, Lightbulb, X, TrendingDown
+  Accessibility, Home, Zap, Navigation, Activity, Bell, Lightbulb, X, TrendingDown, Star
 } from 'lucide-react';
 
 const SOCKET_URL = 'http://localhost:5000';
@@ -22,15 +21,7 @@ const LandingPage = ({ onEnter, userName, onLogout }) => {
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4 relative"
-      style={{
-        backgroundImage: 'url(/images/Gemini_generated_image.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
-      }}
     >
-      {/* Overlay for text readability */}
-      <div className="absolute inset-0 bg-black/60"></div>
       <div className="relative z-10 w-full flex flex-col items-center justify-center min-h-screen px-4">
         {userName && (
           <div className="absolute top-4 right-4 z-20 bg-slate-800 rounded-lg p-4 flex items-center gap-3 border border-slate-600">
@@ -293,9 +284,45 @@ const VenueMap = ({ crowdDensity, queues, userSector }) => {
 
 // ==================== SMART QUEUE DASHBOARD ====================
 const QueueDashboard = ({ queues, onReportQueue, userPoints }) => {
+  const { user, toggleFavorite, token } = useAuth();
   const [expandedQueue, setExpandedQueue] = useState(null);
   const [suggestions, setSuggestions] = useState(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [facilityReviews, setFacilityReviews] = useState({});
+
+  useEffect(() => {
+    if (expandedQueue) {
+      fetch(`http://localhost:5000/api/facility/${expandedQueue}/reviews`)
+        .then(res => res.json())
+        .then(data => setFacilityReviews(prev => ({...prev, [expandedQueue]: data})))
+        .catch(console.error);
+    }
+  }, [expandedQueue]);
+
+  const submitReview = async (e) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`http://localhost:5000/api/facility/${expandedQueue}/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ rating: reviewRating, comment: reviewComment })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFacilityReviews(prev => ({...prev, [expandedQueue]: data.reviews}));
+        setReviewComment('');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const getWaitColor = (wait) => {
     if (wait > 20) return 'bg-red-500';
@@ -401,8 +428,27 @@ const QueueDashboard = ({ queues, onReportQueue, userPoints }) => {
         </div>
       )}
 
+      <div className="flex items-center gap-4 mb-4">
+        <button
+          onClick={() => setShowFavoritesOnly(false)}
+          className={`px-4 py-2 rounded font-bold transition flex items-center gap-2 text-sm ${!showFavoritesOnly ? 'bg-yellow-400 text-black' : 'bg-slate-800 text-gray-400 hover:text-white border border-slate-600'}`}
+        >
+          All Facilities
+        </button>
+        <button
+          onClick={() => setShowFavoritesOnly(true)}
+          className={`px-4 py-2 rounded font-bold transition flex items-center gap-2 text-sm ${showFavoritesOnly ? 'bg-yellow-400 text-black' : 'bg-slate-800 text-gray-400 hover:text-white border border-slate-600'}`}
+        >
+          <Star className="w-4 h-4 fill-current" /> Favorites
+        </button>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-4">
-        {queues && Object.values(queues).map((q) => (
+        {queues && Object.values(queues)
+          .filter(q => !showFavoritesOnly || (user?.favorites && user.favorites.includes(q.id)))
+          .map((q) => {
+          const isFavorite = user?.favorites && user.favorites.includes(q.id);
+          return (
           <div
             key={q.id}
             className={`p-4 rounded-lg border border-slate-500 cursor-pointer hover:border-yellow-400 transition ${
@@ -411,11 +457,26 @@ const QueueDashboard = ({ queues, onReportQueue, userPoints }) => {
             onClick={() => setExpandedQueue(expandedQueue === q.id ? null : q.id)}
           >
             <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="font-bold text-white">{q.name}</h3>
-                <p className="text-gray-400 text-sm">{q.location.sector} Sector</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(q.id); }}
+                  className="mt-1"
+                >
+                  <Star className={`w-6 h-6 transition ${isFavorite ? 'text-yellow-400 fill-current scale-110' : 'text-slate-500 hover:text-yellow-400'}`} />
+                </button>
+                <div>
+                  <h3 className="font-bold text-white flex items-center gap-2 text-lg">
+                    {q.name}
+                    {q.avgRating && (
+                      <span className="text-xs bg-slate-700 px-2 py-1 rounded text-yellow-400 flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-current" /> {q.avgRating} ({q.reviewCount})
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-gray-400 text-sm">{q.location.sector} Sector</p>
+                </div>
               </div>
-              <span className={`px-3 py-1 rounded text-white text-sm font-bold ${getWaitColor(q.currentWait)}`}>
+              <span className={`px-3 py-1 rounded text-white text-sm font-bold shadow-lg border border-black/20 ${getWaitColor(q.currentWait)}`}>
                 {q.currentWait}m
               </span>
             </div>
@@ -441,10 +502,60 @@ const QueueDashboard = ({ queues, onReportQueue, userPoints }) => {
                     {loadingSuggestions ? 'Loading...' : '💡 Suggest Alternative'}
                   </button>
                 )}
+
+                <div className="mt-6 pt-4 border-t border-slate-600">
+                  <h4 className="text-white font-bold mb-3 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                    Reviews & Ratings
+                  </h4>
+                  <div className="bg-slate-700 p-3 rounded mb-3 max-h-40 overflow-y-auto space-y-2">
+                    {facilityReviews[q.id] && facilityReviews[q.id].length > 0 ? (
+                      facilityReviews[q.id].map((r, idx) => (
+                        <div key={idx} className="border-b border-slate-600 pb-2 last:border-0 last:pb-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-white font-semibold text-xs">{r.userName}</span>
+                            <span className="text-yellow-400 flex text-xs">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} className={`w-3 h-3 ${i < r.rating ? 'fill-current' : 'text-gray-600'}`} />
+                              ))}
+                            </span>
+                          </div>
+                          <p className="text-gray-400 text-xs mt-1">{r.comment}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-xs italic">No reviews yet. Be the first!</p>
+                    )}
+                  </div>
+                  
+                  <div className="bg-slate-800 p-3 rounded border border-slate-600" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-xs text-gray-300 mb-2 font-semibold">Write a Review</p>
+                    <div className="flex items-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button key={star} type="button" onClick={() => setReviewRating(star)}>
+                          <Star className={`w-5 h-5 ${star <= reviewRating ? 'fill-current text-yellow-400' : 'text-gray-600 hover:text-yellow-200'}`} />
+                        </button>
+                      ))}
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="Share your experience..." 
+                      className="w-full bg-slate-700 border border-slate-500 rounded px-2 py-1 text-xs text-white mb-2 focus:border-yellow-400 outline-none"
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                    />
+                    <button 
+                      onClick={submitReview}
+                      className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold py-2 rounded transition"
+                    >
+                      Submit Review
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );
@@ -941,8 +1052,6 @@ const Dashboard = ({ onLogout, userName }) => {
         <AdminPanel isAdmin={false} userName={userName} />
 
         <NotificationPreferences />
-
-        <PaymentProcessing reservationItem={{ price: '12.99' }} />
 
         {/* Footer */}
         <div className="mt-8 text-center text-gray-400 text-sm">

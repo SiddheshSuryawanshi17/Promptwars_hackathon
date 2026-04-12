@@ -68,7 +68,9 @@ const initializeQueues = () => {
       lastUpdated: new Date(),
       status: "open",
       accessible: conc.accessible,
-      location: { x: conc.x, y: conc.y, sector: conc.sector }
+      location: { x: conc.x, y: conc.y, sector: conc.sector },
+      avgRating: null,
+      reviewCount: 0
     };
   });
 
@@ -82,7 +84,9 @@ const initializeQueues = () => {
       lastUpdated: new Date(),
       status: "open",
       accessible: rest.accessible,
-      location: { x: rest.x, y: rest.y, sector: rest.sector }
+      location: { x: rest.x, y: rest.y, sector: rest.sector },
+      avgRating: null,
+      reviewCount: 0
     };
   });
 };
@@ -107,6 +111,36 @@ let notificationId = 3;
 // User engagement data
 let userPoints = {};
 
+// Facility Reviews data
+let facilityReviews = {};
+
+// User Orders Data
+let userOrders = {};
+
+// Concession menu items mapping
+const concessionMenus = {
+  'conc_1': [
+    { id: 'item_1_1', name: 'Cheese Pizza Slice', price: 8.00, estimatedTime: '5 mins' },
+    { id: 'item_1_2', name: 'Pepperoni Pizza Slice', price: 9.00, estimatedTime: '5 mins' }
+  ],
+  'conc_2': [
+    { id: 'item_2_1', name: 'Classic Burger', price: 10.00, estimatedTime: '8 mins' },
+    { id: 'item_2_2', name: 'Deluxe Burger', price: 12.00, estimatedTime: '10 mins' }
+  ],
+  'conc_3': [
+    { id: 'item_3_1', name: 'Soda (Small)', price: 4.00, estimatedTime: '2 mins' },
+    { id: 'item_3_2', name: 'Soda (Large)', price: 5.00, estimatedTime: '2 mins' }
+  ],
+  'conc_4': [
+    { id: 'item_4_1', name: 'Hot Dog', price: 6.00, estimatedTime: '3 mins' },
+    { id: 'item_4_2', name: 'Chili Dog', price: 7.50, estimatedTime: '4 mins' }
+  ],
+  'conc_5': [
+    { id: 'item_5_1', name: 'Popcorn', price: 5.00, estimatedTime: '2 mins' },
+    { id: 'item_5_2', name: 'Nachos', price: 6.50, estimatedTime: '3 mins' }
+  ]
+};
+
 initializeQueues();
 
 // ==================== DATA SIMULATOR ====================
@@ -122,6 +156,13 @@ const simulateQueueUpdates = () => {
       facility.currentWait = Math.max(2, facility.currentWait + change);
       facility.queueLength = Math.max(0, facility.queueLength + Math.floor(Math.random() * 4) - 1);
       facility.lastUpdated = new Date();
+
+      // Ensure avgRating is kept up to date
+      const reviews = facilityReviews[facilityId] || [];
+      if (reviews.length > 0) {
+        facility.avgRating = (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1);
+        facility.reviewCount = reviews.length;
+      }
 
       // Randomly close/open facilities
       if (Math.random() < 0.05) {
@@ -311,6 +352,132 @@ app.post('/api/report-queue', (req, res) => {
 app.get('/api/user-points/:userId', (req, res) => {
   const points = userPoints[req.params.userId] || 0;
   res.json({ userId: req.params.userId, points });
+});
+
+// Toggle favorite facility
+app.post('/api/user/favorites', authMiddleware, (req, res) => {
+  const { facilityId } = req.body;
+  const user = require('./auth').users[req.userId];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  
+  if (!user.favorites) user.favorites = [];
+  
+  const index = user.favorites.indexOf(facilityId);
+  if (index > -1) {
+    user.favorites.splice(index, 1);
+  } else {
+    user.favorites.push(facilityId);
+  }
+  
+  res.json({ favorites: user.favorites });
+});
+
+// Add review to facility
+app.post('/api/facility/:id/reviews', authMiddleware, (req, res) => {
+  const facilityId = req.params.id;
+  const { rating, comment } = req.body;
+  const user = require('./auth').users[req.userId];
+  
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'Valid rating (1-5) required' });
+
+  if (!facilityReviews[facilityId]) {
+    facilityReviews[facilityId] = [];
+  }
+  
+  // Check if user already reviewed
+  const existingReviewIndex = facilityReviews[facilityId].findIndex(r => r.userId === req.userId);
+  const newReview = {
+    userId: req.userId,
+    userName: user.name,
+    rating,
+    comment,
+    timestamp: new Date()
+  };
+  
+  if (existingReviewIndex > -1) {
+    facilityReviews[facilityId][existingReviewIndex] = newReview;
+  } else {
+    facilityReviews[facilityId].push(newReview);
+  }
+  
+  // Update queueData avgRating immediately
+  if (queueData[facilityId]) {
+    const reviews = facilityReviews[facilityId];
+    queueData[facilityId].avgRating = (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1);
+    queueData[facilityId].reviewCount = reviews.length;
+    io.emit('queue-update', queueData); // Broadcast update
+  }
+
+  res.json({ success: true, reviews: facilityReviews[facilityId] });
+});
+
+// Get reviews for facility
+app.get('/api/facility/:id/reviews', (req, res) => {
+  const facilityId = req.params.id;
+  res.json(facilityReviews[facilityId] || []);
+});
+
+// Get concession menu
+app.get('/api/concession-menu', (req, res) => {
+  const menus = facilities.concessions.map(conc => ({
+    ...conc,
+    currentWait: queueData[conc.id] ? queueData[conc.id].currentWait : 0,
+    items: concessionMenus[conc.id] || []
+  }));
+  res.json(menus);
+});
+
+// Get user orders
+app.get('/api/orders', authMiddleware, (req, res) => {
+  res.json(userOrders[req.userId] || []);
+});
+
+// Create new order (simulates successful payment)
+app.post('/api/orders', authMiddleware, (req, res) => {
+  const { concessionId, itemId } = req.body;
+  const user = require('./auth').users[req.userId];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  
+  if (!userOrders[req.userId]) {
+    userOrders[req.userId] = [];
+  }
+  
+  const concession = facilities.concessions.find(c => c.id === concessionId);
+  const items = concessionMenus[concessionId] || [];
+  const item = items.find(i => i.id === itemId);
+  
+  if (!concession || !item) {
+    return res.status(400).json({ error: 'Invalid concession or item' });
+  }
+
+  const order = {
+    id: `ord_${Date.now()}`,
+    concessionName: concession.name,
+    concessionSector: concession.sector,
+    itemName: item.name,
+    price: item.price,
+    estimatedTime: item.estimatedTime,
+    status: 'preparing', // preparing, ready, picked_up
+    timestamp: new Date()
+  };
+  
+  userOrders[req.userId].unshift(order);
+  
+  // Simulate order getting ready after some time
+  setTimeout(() => {
+    order.status = 'ready';
+    io.emit('notification', {
+      id: Date.now(),
+      type: 'alert',
+      message: `Your order (${order.itemName}) at ${order.concessionName} is READY for pickup!`,
+      timestamp: new Date(),
+      urgent: true,
+      userId: req.userId
+    });
+  }, 10000); // 10 seconds simulation
+
+  res.json({ success: true, order, orders: userOrders[req.userId] });
 });
 
 // ==================== WEBSOCKET EVENTS ====================
