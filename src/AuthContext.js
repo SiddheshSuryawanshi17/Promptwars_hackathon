@@ -10,29 +10,29 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is logged in on mount
   useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        } else {
+          localStorage.removeItem('authToken');
+          setToken(null);
+        }
+      } catch (err) {
+        console.error('Profile fetch error:', err);
+      }
+    };
+
     if (token) {
       fetchProfile();
     }
   }, [token]);
-
-  const fetchProfile = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      } else {
-        localStorage.removeItem('authToken');
-        setToken(null);
-      }
-    } catch (err) {
-      console.error('Profile fetch error:', err);
-    }
-  };
 
   const register = async (email, password, name) => {
     setLoading(true);

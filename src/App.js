@@ -10,8 +10,8 @@ import { GoogleMapsIntegration } from './GoogleMapsIntegration';
 import { AdminPanel } from './AdminPanel';
 import { NotificationPreferences } from './NotificationPreferences';
 import {
-  MapPin, Clock, Users, AlertCircle, MessageCircle, Award,
-  Accessibility, Home, Zap, Navigation, Activity, Bell, Lightbulb, X, TrendingDown, Star
+  MapPin, Clock, AlertCircle, MessageCircle, Award,
+  Accessibility, Home, Zap, Activity, Bell, Lightbulb, X, TrendingDown, Star
 } from 'lucide-react';
 
 const SOCKET_URL = 'http://localhost:5000';
@@ -569,7 +569,7 @@ const NotificationFeed = ({ notifications }) => {
       case 'event': return <Zap className="w-5 h-5" />;
       case 'lost_found': return <Home className="w-5 h-5" />;
       case 'medical': return <Activity className="w-5 h-5" />;
-      return <Bell className="w-5 h-5" />;
+      default: return <Bell className="w-5 h-5" />;
     }
   };
 
@@ -935,9 +935,7 @@ const Dashboard = ({ onLogout, userName }) => {
   const [queues, setQueues] = useState(null);
   const [crowdDensity, setCrowdDensity] = useState({});
   const [notifications, setNotifications] = useState([]);
-  const [userSector, setUserSector] = useState('North');
   const [userPoints, setUserPoints] = useState(0);
-  const userId = `user_${Math.random().toString(36).substr(2, 9)}`;
 
   useEffect(() => {
     // Initialize socket connection with debugging
@@ -1034,7 +1032,7 @@ const Dashboard = ({ onLogout, userName }) => {
           </div>
         </div>
 
-        <VenueMap crowdDensity={crowdDensity} queues={queues} userSector={userSector} />
+        <VenueMap crowdDensity={crowdDensity} queues={queues} />
         <ClockAndSchedule />
         <QueueDashboard queues={queues} onReportQueue={handleReportQueue} userPoints={userPoints} />
         <NotificationFeed notifications={notifications} />

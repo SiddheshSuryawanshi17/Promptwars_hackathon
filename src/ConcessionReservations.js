@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Heart, MapPin, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ShoppingCart, MapPin, Clock } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { PaymentProcessing } from './PaymentProcessing';
 
@@ -10,28 +10,28 @@ export const ConcessionReservations = () => {
   const [showReservations, setShowReservations] = useState(false);
   const [pendingItem, setPendingItem] = useState(null); // { concession, item }
 
-  useEffect(() => {
-    fetchConcessions();
-    if (token) fetchOrders();
-  }, [token]);
-
-  const fetchConcessions = async () => {
-    try {
-      const res = await fetch('http://localhost:5000/api/concession-menu');
-      const data = await res.json();
-      setConcessions(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const res = await fetch('http://localhost:5000/api/orders', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       setReservations(data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchConcessions();
+    if (token) fetchOrders();
+  }, [token, fetchOrders]);
+
+  const fetchConcessions = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/concession-menu');
+      const data = await res.json();
+      setConcessions(data);
     } catch (e) {
       console.error(e);
     }

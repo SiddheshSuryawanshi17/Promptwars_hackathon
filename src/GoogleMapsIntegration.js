@@ -3,7 +3,6 @@ import { MapPin, Navigation } from 'lucide-react';
 
 export const GoogleMapsIntegration = () => {
   const [showMap, setShowMap] = useState(false);
-  const [selectedFacility, setSelectedFacility] = useState(null);
 
   // Venue coordinates (example: Stadium in a major city)
   const venueCoordinates = {
